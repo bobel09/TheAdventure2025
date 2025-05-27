@@ -108,20 +108,18 @@ public class Engine
 
         if (_player.State.State == PlayerObject.PlayerState.GameOver)
         {
-            // Only allow input after 1 second
             if (_gameOverTime == null)
             {
                 _gameOverTime = currentTime;
-                _gameOverHighlightRestart = true; // Always default to Restart
+                _gameOverHighlightRestart = true; 
                 _gameOverHandled = false;
-                _lastTabPressed = false; // Add this field to your class: private bool _lastTabPressed = false;
+                _lastTabPressed = false; 
             }
 
             if ((currentTime - _gameOverTime.Value).TotalSeconds >= 1)
             {
                 bool tabPressed = _input.isTabKeyPressed();
 
-                // Edge detection for Tab key
                 if (tabPressed && !_lastTabPressed)
                 {
                     _gameOverHighlightRestart = !_gameOverHighlightRestart;

@@ -6,7 +6,7 @@ namespace TheAdventure.Models;
 public class PlayerObject : RenderableGameObject
 {
     private const int _speed = 128; // pixels per second
-    private int _maxHealth = 10;
+    private int _maxHealth = 100;
     private int _currentHealth;
     public int MaxHealth => _maxHealth;
     public int CurrentHealth => _currentHealth;
