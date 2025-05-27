@@ -21,6 +21,14 @@ public class Engine
     private PlayerObject? _player;
 
     private DateTimeOffset _lastUpdate = DateTimeOffset.Now;
+    private DateTimeOffset? _gameOverTime = null;
+
+    private bool _gameOverHighlightRestart = true; 
+    private bool _gameOverHandled = false;
+
+    private bool _lastUpPressed = false;
+    private bool _lastDownPressed = false;
+    private bool _lastTabPressed = false;
 
     public Engine(GameRenderer renderer, Input input)
     {
@@ -41,6 +49,8 @@ public class Engine
             throw new Exception("Failed to load level");
         }
 
+        _tileIdMap.Clear();
+
         foreach (var tileSetRef in level.TileSets)
         {
             var tileSetContent = File.ReadAllText(Path.Combine("Assets", tileSetRef.Source));
@@ -53,10 +63,17 @@ public class Engine
             foreach (var tile in tileSet.Tiles)
             {
                 tile.TextureId = _renderer.LoadTexture(Path.Combine("Assets", tile.Image), out _);
-                _tileIdMap.Add(tile.Id!.Value, tile);
-            }
+                _tileIdMap.Add(tileSetRef.FirstGID!.Value + tile.Id!.Value, tile);
 
-            _loadedTileSets.Add(tileSet.Name, tileSet);
+                if (!_loadedTileSets.ContainsKey(tileSet.Name))
+                {
+                    _loadedTileSets.Add(tileSet.Name, tileSet);
+                }
+                else
+                {
+                    
+                }
+            }
         }
 
         if (level.Width == null || level.Height == null)
@@ -75,7 +92,8 @@ public class Engine
         _currentLevel = level;
 
         _scriptEngine.LoadAll(Path.Combine("Assets", "Scripts"));
-    }
+        } 
+        
 
     public void ProcessFrame()
     {
@@ -85,6 +103,47 @@ public class Engine
 
         if (_player == null)
         {
+            return;
+        }
+
+        if (_player.State.State == PlayerObject.PlayerState.GameOver)
+        {
+            // Only allow input after 1 second
+            if (_gameOverTime == null)
+            {
+                _gameOverTime = currentTime;
+                _gameOverHighlightRestart = true; // Always default to Restart
+                _gameOverHandled = false;
+                _lastTabPressed = false; // Add this field to your class: private bool _lastTabPressed = false;
+            }
+
+            if ((currentTime - _gameOverTime.Value).TotalSeconds >= 1)
+            {
+                bool tabPressed = _input.isTabKeyPressed();
+
+                // Edge detection for Tab key
+                if (tabPressed && !_lastTabPressed)
+                {
+                    _gameOverHighlightRestart = !_gameOverHighlightRestart;
+                }
+                _lastTabPressed = tabPressed;
+
+                if (IsSelectKeyPressed())
+                {
+                    if (!_gameOverHandled)
+                    {
+                        _gameOverHandled = true;
+                        if (_gameOverHighlightRestart)
+                        {
+                            RestartGame();
+                        }
+                        else
+                        {
+                            QuitGame();
+                        }
+                    }
+                }
+            }
             return;
         }
 
@@ -114,14 +173,26 @@ public class Engine
         _renderer.SetDrawColor(0, 0, 0, 255);
         _renderer.ClearScreen();
 
+        if (_player != null && _player.State.State == PlayerObject.PlayerState.GameOver)
+        {
+           
+                _renderer.DrawGameOverScreen(_gameOverHighlightRestart);
+                _renderer.PresentFrame();
+                return;
+            
+        }
+
         var playerPosition = _player!.Position;
         _renderer.CameraLookAt(playerPosition.X, playerPosition.Y);
 
         RenderTerrain();
         RenderAllObjects();
 
+        _renderer.DrawHealthBar(_player.CurrentHealth, _player.MaxHealth, 10, 10, 200, 20);
+
         _renderer.PresentFrame();
     }
+
 
     public void RenderAllObjects()
     {
@@ -149,7 +220,7 @@ public class Engine
             var deltaY = Math.Abs(_player.Position.Y - tempGameObject.Position.Y);
             if (deltaX < 32 && deltaY < 32)
             {
-                _player.GameOver();
+                _player.TakeDamage(20); 
             }
         }
 
@@ -160,24 +231,28 @@ public class Engine
     {
         foreach (var currentLayer in _currentLevel.Layers)
         {
-            for (int i = 0; i < _currentLevel.Width; ++i)
+            if (currentLayer.Width == null || currentLayer.Data == null)
+                continue;
+
+            for (int i = 0; i < currentLayer.Width.Value; ++i)
             {
-                for (int j = 0; j < _currentLevel.Height; ++j)
+                for (int j = 0; j < currentLayer.Height; ++j)
                 {
-                    int? dataIndex = j * currentLayer.Width + i;
-                    if (dataIndex == null)
-                    {
+                    int dataIndex = j * currentLayer.Width.Value + i;
+                    int? tileIdNullable = currentLayer.Data[dataIndex];
+
+                    if (tileIdNullable == null)
                         continue;
-                    }
 
-                    var currentTileId = currentLayer.Data[dataIndex.Value] - 1;
-                    if (currentTileId == null)
-                    {
+                    int tileId = tileIdNullable.Value;
+
+                    if (tileId == 0) 
                         continue;
-                    }
 
-                    var currentTile = _tileIdMap[currentTileId.Value];
+                    if (!_tileIdMap.ContainsKey(tileId))
+                        continue;
 
+                    var currentTile = _tileIdMap[tileId];
                     var tileWidth = currentTile.ImageWidth ?? 0;
                     var tileHeight = currentTile.ImageHeight ?? 0;
 
@@ -214,5 +289,33 @@ public class Engine
 
         TemporaryGameObject bomb = new(spriteSheet, 2.1, (worldCoords.X, worldCoords.Y));
         _gameObjects.Add(bomb.Id, bomb);
+    }
+
+    private void ClearAndPresentScreen()
+    {
+        _renderer.SetDrawColor(0, 0, 0, 255);
+        _renderer.ClearScreen();
+        _renderer.PresentFrame();
+    }
+
+    private void RestartGame()
+    {
+        ClearAndPresentScreen();
+        _gameOverHandled = false;
+        _gameOverTime = null;
+        _gameOverHighlightRestart = true;
+        SetupWorld();
+    }
+
+    private void QuitGame()
+    {
+        ClearAndPresentScreen();
+        Environment.Exit(0);
+    }
+
+    private bool IsSelectKeyPressed()
+    {
+   
+        return _input.isSpaceKeyPressed() || _input.isEnterKeyPressed();
     }
 }

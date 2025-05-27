@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Silk.NET.Maths;
 
 namespace TheAdventure.Models;
@@ -5,6 +6,11 @@ namespace TheAdventure.Models;
 public class PlayerObject : RenderableGameObject
 {
     private const int _speed = 128; // pixels per second
+    private int _maxHealth = 10;
+    private int _currentHealth;
+    public int MaxHealth => _maxHealth;
+    public int CurrentHealth => _currentHealth;
+
 
     public enum PlayerStateDirection
     {
@@ -28,9 +34,23 @@ public class PlayerObject : RenderableGameObject
 
     public PlayerObject(SpriteSheet spriteSheet, int x, int y) : base(spriteSheet, (x, y))
     {
+        _currentHealth = _maxHealth;
         SetState(PlayerState.Idle, PlayerStateDirection.Down);
     }
 
+    public void TakeDamage(int amount)
+    {
+        if (State.State == PlayerState.GameOver) return;
+        _currentHealth = Math.Max(0, _currentHealth - amount);
+        if (_currentHealth == 0)
+        {
+            GameOver();
+        }
+    }
+    public void Heal(int amount)
+    {
+        _currentHealth = Math.Min(_maxHealth, _currentHealth + amount);
+    }
     public void SetState(PlayerState state)
     {
         SetState(state, State.Direction);
