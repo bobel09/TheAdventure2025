@@ -108,13 +108,14 @@ public class SpriteSheet
         else
         {
             var totalFrames = (ActiveAnimation.EndFrame.Row - ActiveAnimation.StartFrame.Row) * ColumnCount +
-                ActiveAnimation.EndFrame.Col - ActiveAnimation.StartFrame.Col;
+                (ActiveAnimation.EndFrame.Col - ActiveAnimation.StartFrame.Col) + 1;
+
             var currentFrame = (int)((DateTimeOffset.Now - _animationStart).TotalMilliseconds /
                                      (ActiveAnimation.DurationMs / (double)totalFrames));
-            if (currentFrame > totalFrames)
+            if (currentFrame >= totalFrames)
             {
                 AnimationFinished = true;
-                
+
                 if (ActiveAnimation.Loop)
                 {
                     _animationStart = DateTimeOffset.Now;
@@ -122,7 +123,7 @@ public class SpriteSheet
                 }
                 else
                 {
-                    currentFrame = totalFrames;
+                    currentFrame = totalFrames - 1;
                 }
             }
 

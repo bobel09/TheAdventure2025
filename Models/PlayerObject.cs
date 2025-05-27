@@ -8,9 +8,10 @@ public class PlayerObject : RenderableGameObject
     private const int _speed = 128; // pixels per second
     private int _maxHealth = 100;
     private int _currentHealth;
+    private int _score = 0;
     public int MaxHealth => _maxHealth;
     public int CurrentHealth => _currentHealth;
-
+    public int Score => _score;
 
     public enum PlayerStateDirection
     {
@@ -165,5 +166,10 @@ public class PlayerObject : RenderableGameObject
         }
 
         Position = (x, y);
+    }
+
+    public void AddScore(int amount)
+    {
+        _score += amount;
     }
 }

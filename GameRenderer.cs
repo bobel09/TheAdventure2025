@@ -100,6 +100,18 @@ public unsafe class GameRenderer
         }
     }
 
+    public void RenderTextureScreen(int textureId, Rectangle<int> src, Rectangle<int> dst,
+        RendererFlip flip = RendererFlip.None, double angle = 0.0, Point center = default)
+    {
+        if (_texturePointers.TryGetValue(textureId, out var imageTexture))
+        {
+            _sdl.RenderCopyEx(_renderer, (Texture*)imageTexture, in src,
+                in dst,
+                angle,
+                in center, flip);
+        }
+    }
+
     public Vector2D<int> ToWorldCoordinates(int x, int y)
     {
         return _camera.ToWorldCoordinates(new Vector2D<int>(x, y));
@@ -251,4 +263,16 @@ public unsafe class GameRenderer
         RenderTexture(restartTextId, new Rectangle<int>(0, 0, restartData.Width, restartData.Height), restartRect);
         RenderTexture(quitTextId, new Rectangle<int>(0, 0, quitData.Width, quitData.Height), quitRect);
     }
+
+    public void DrawScore(int score, int screenX, int screenY, string fontPath, int fontSize = 28)
+    {
+        var scoreText = $"Score: {score}";
+        var color = new SixLabors.ImageSharp.PixelFormats.Rgba32(255, 255, 0, 255);
+        var scoreTextureId = CreateTextTexture(scoreText, fontPath, fontSize, color, out var scoreData);
+        var scoreRect = new Silk.NET.Maths.Rectangle<int>(screenX, screenY, scoreData.Width, scoreData.Height);
+        RenderTextureScreen(scoreTextureId, new Silk.NET.Maths.Rectangle<int>(0, 0, scoreData.Width, scoreData.Height), scoreRect);
+    }
+
+    public int Width => _camera.Width;
+    public int Height => _camera.Height;
 }
